@@ -14,7 +14,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
-enum AssetType {
+export enum AssetType {
     EQUITY = 'Equity',
     OPTIONS = 'Options',
     FUTURES = 'Futures',
@@ -22,7 +22,7 @@ enum AssetType {
     FOREX = 'Forex',
 }
 
-enum Timeframe {
+export enum Timeframe {
     ONE_MIN = '1m',
     FIVE_MIN = '5m',
     FIFTEEN_MIN = '15m',
@@ -30,13 +30,13 @@ enum Timeframe {
     DAILY = 'Daily',
 }
 
-enum StrategyMethod {
+export enum StrategyMethod {
     ZoneTrading = 'Zone Breakout',
     EMATrading = 'EMA Pullback',
     LiquidityTrading = 'Liquidity Sweep',
 }
 
-enum EmotionalStateDuring {
+export enum EmotionalStateDuring {
     CALM = 'Calm',
     CONFIDENT = 'Confident',
     ANXIOUS = 'Anxious',
@@ -47,7 +47,7 @@ enum EmotionalStateDuring {
     HESITANT = 'Hesitant',
 }
 
-enum EmotionalStateAfter {
+export enum EmotionalStateAfter {
     SATISFIED = 'Satisfied',
     REGRETFUL = 'Regretful',
     ANGRY = 'Angry',
@@ -56,7 +56,7 @@ enum EmotionalStateAfter {
     DISAPPOINTED = 'Disappointed',
 }
 
-enum MistakesMade {
+export enum MistakesMade {
     OVERTRADING = 'Overtrading',
     REVENGE_TRADING = 'Revenge trading',
     RISKED_TOO_MUCH = 'Risked too much',
@@ -73,7 +73,7 @@ enum MistakesMade {
     NEWS_BASED_EMOTIONAL_ENTRY = 'News-based emotional entry',
 }
 
-enum ProfitOrLoss {
+export enum ProfitOrLoss {
     PROFIT = 'Profit',
     LOSS = 'Loss',
 }

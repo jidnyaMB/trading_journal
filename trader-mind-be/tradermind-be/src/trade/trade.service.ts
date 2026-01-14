@@ -1,85 +1,144 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Trade } from './entities/trade.entity';
+import { ExcelService } from '../common/excel.service';
 import { CreateTradeDto } from './dto/create-trade.dto';
+import { v4 as uuidv4 } from 'uuid';
+
+export interface TradeExcel {
+    id: string;
+    tradeDate: string;
+    market: string;
+    assetType: string;
+    timeframe: string;
+    strategyMethod: string;
+    plannedStopLoss?: number;
+    plannedTarget?: number;
+    actualExitPrice?: number;
+    riskRewardPlanned?: string;
+    riskRewardAchieved?: string;
+    followedStopLoss?: boolean;
+    emotionalStateDuring?: string;
+    emotionalStateAfter?: string;
+    confidenceLevel?: number;
+    mistakesMade?: string;
+    rulesFollowed?: number;
+    profitOrLoss: string;
+    images?: string;
+    createdAt: string;
+    updatedAt: string;
+}
 
 @Injectable()
 export class TradeService {
-    constructor(
-        @InjectRepository(Trade)
-        private tradeRepository: Repository<Trade>,
-    ) { }
+    private readonly headers = [
+        'id', 'tradeDate', 'market', 'assetType', 'timeframe', 'strategyMethod',
+        'plannedStopLoss', 'plannedTarget', 'actualExitPrice', 'riskRewardPlanned',
+        'riskRewardAchieved', 'followedStopLoss', 'emotionalStateDuring',
+        'emotionalStateAfter', 'confidenceLevel', 'mistakesMade', 'rulesFollowed',
+        'profitOrLoss', 'images', 'createdAt', 'updatedAt'
+    ];
 
-    async create(createTradeDto: CreateTradeDto, imagePaths?: string[]): Promise<Trade> {
-        const trade = this.tradeRepository.create({
+    constructor(private readonly excelService: ExcelService) { }
+
+    private mapExcelToTrade(excelTrade: TradeExcel) {
+        return {
+            ...excelTrade,
+            emotionalStateDuring: excelTrade.emotionalStateDuring ? excelTrade.emotionalStateDuring.split(',') : [],
+            mistakesMade: excelTrade.mistakesMade ? excelTrade.mistakesMade.split(',') : [],
+            images: excelTrade.images ? excelTrade.images.split(',') : [],
+        };
+    }
+
+    private mapTradeToExcel(trade: any): TradeExcel {
+        return {
+            ...trade,
+            emotionalStateDuring: Array.isArray(trade.emotionalStateDuring) ? trade.emotionalStateDuring.join(',') : (trade.emotionalStateDuring || ''),
+            mistakesMade: Array.isArray(trade.mistakesMade) ? trade.mistakesMade.join(',') : (trade.mistakesMade || ''),
+            images: Array.isArray(trade.images) ? trade.images.join(',') : (trade.images || ''),
+        };
+    }
+
+    async create(createTradeDto: CreateTradeDto, imagePaths?: string[]) {
+        const rawData = this.excelService.readData<TradeExcel>('Trades', this.headers);
+        const now = new Date().toISOString();
+
+        const newTrade = {
             ...createTradeDto,
-            tradeDate: new Date(), // Auto-generate trade date
+            id: uuidv4(),
+            tradeDate: now,
             images: imagePaths || [],
-        });
+            createdAt: now,
+            updatedAt: now,
+        };
 
-        return await this.tradeRepository.save(trade);
+        rawData.push(this.mapTradeToExcel(newTrade));
+        this.excelService.writeData('Trades', rawData, this.headers);
+        return newTrade;
     }
 
-    async findAll(): Promise<Trade[]> {
-        return await this.tradeRepository.find({
-            order: { tradeDate: 'DESC' },
-        });
+    async findAll() {
+        const rawData = this.excelService.readData<TradeExcel>('Trades', this.headers);
+        return rawData
+            .map(t => this.mapExcelToTrade(t))
+            .sort((a, b) => new Date(b.tradeDate).getTime() - new Date(a.tradeDate).getTime());
     }
 
-    async findOne(id: string): Promise<Trade> {
-        const trade = await this.tradeRepository.findOne({ where: { id } });
+    async findOne(id: string) {
+        const rawData = this.excelService.readData<TradeExcel>('Trades', this.headers);
+        const excelTrade = rawData.find(t => t.id === id);
 
-        if (!trade) {
+        if (!excelTrade) {
             throw new NotFoundException(`Trade with ID ${id} not found`);
         }
 
-        return trade;
+        return this.mapExcelToTrade(excelTrade);
     }
 
-    async update(id: string, updateTradeDto: Partial<CreateTradeDto>, imagePaths?: string[]): Promise<Trade> {
-        const trade = await this.findOne(id);
+    async update(id: string, updateTradeDto: Partial<CreateTradeDto>, imagePaths?: string[]) {
+        const rawData = this.excelService.readData<TradeExcel>('Trades', this.headers);
+        const index = rawData.findIndex(t => t.id === id);
 
-        Object.assign(trade, updateTradeDto);
-
-        if (imagePaths) {
-            trade.images = imagePaths;
+        if (index === -1) {
+            throw new NotFoundException(`Trade with ID ${id} not found`);
         }
 
-        return await this.tradeRepository.save(trade);
+        const currentTrade = this.mapExcelToTrade(rawData[index]);
+        const updatedTrade = {
+            ...currentTrade,
+            ...updateTradeDto,
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (imagePaths) {
+            updatedTrade.images = imagePaths;
+        }
+
+        rawData[index] = this.mapTradeToExcel(updatedTrade);
+        this.excelService.writeData('Trades', rawData, this.headers);
+        return updatedTrade;
     }
 
     async remove(id: string): Promise<void> {
-        const trade = await this.findOne(id);
-        await this.tradeRepository.remove(trade);
-    }
+        const rawData = this.excelService.readData<TradeExcel>('Trades', this.headers);
+        const filteredData = rawData.filter(t => t.id !== id);
 
-    // Additional useful methods
-    async getTradesByDateRange(startDate: Date, endDate: Date): Promise<Trade[]> {
-        return await this.tradeRepository
-            .createQueryBuilder('trade')
-            .where('trade.tradeDate BETWEEN :startDate AND :endDate', { startDate, endDate })
-            .orderBy('trade.tradeDate', 'DESC')
-            .getMany();
-    }
+        if (rawData.length === filteredData.length) {
+            throw new NotFoundException(`Trade with ID ${id} not found`);
+        }
 
-    async getTradesByProfitLoss(profitOrLoss: string): Promise<Trade[]> {
-        return await this.tradeRepository.find({
-            where: { profitOrLoss },
-            order: { tradeDate: 'DESC' },
-        });
+        this.excelService.writeData('Trades', filteredData, this.headers);
     }
 
     async getTradeStatistics() {
-        const totalTrades = await this.tradeRepository.count();
-        const profitTrades = await this.tradeRepository.count({ where: { profitOrLoss: 'Profit' } });
-        const lossTrades = await this.tradeRepository.count({ where: { profitOrLoss: 'Loss' } });
+        const trades = await this.findAll();
+        const totalTrades = trades.length;
+        const profitTrades = trades.filter(t => t.profitOrLoss === 'Profit').length;
+        const lossTrades = trades.filter(t => t.profitOrLoss === 'Loss').length;
 
         return {
             totalTrades,
             profitTrades,
             lossTrades,
-            winRate: totalTrades > 0 ? ((profitTrades / totalTrades) * 100).toFixed(2) : 0,
+            winRate: totalTrades > 0 ? ((profitTrades / totalTrades) * 100).toFixed(2) : '0',
         };
     }
 }

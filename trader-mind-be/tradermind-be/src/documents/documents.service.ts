@@ -1,45 +1,61 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Document } from './document.entity';
+import { ExcelService } from '../common/excel.service';
 import * as fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+
+export interface Document {
+    id: string;
+    originalName: string;
+    fileName: string;
+    filePath: string;
+    mimeType: string;
+    size: number;
+    createdAt: string;
+}
 
 @Injectable()
 export class DocumentsService {
-    constructor(
-        @InjectRepository(Document)
-        private readonly documentRepo: Repository<Document>,
-    ) { }
+    private readonly headers = ['id', 'originalName', 'fileName', 'filePath', 'mimeType', 'size', 'createdAt'];
+
+    constructor(private readonly excelService: ExcelService) { }
 
     async create(files: Express.Multer.File[]) {
-        const docs = files.map((file) =>
-            this.documentRepo.create({
-                originalName: file.originalname,
-                fileName: file.filename,
-                filePath: file.path,
-                mimeType: file.mimetype,
-                size: file.size,
-            }),
-        );
+        const docs = this.excelService.readData<Document>('Documents', this.headers);
+        const now = new Date().toISOString();
 
-        return await this.documentRepo.save(docs);
+        const newDocs = files.map((file) => ({
+            id: uuidv4(),
+            originalName: file.originalname,
+            fileName: file.filename,
+            filePath: file.path,
+            mimeType: file.mimetype,
+            size: file.size,
+            createdAt: now,
+        }));
+
+        docs.push(...newDocs);
+        this.excelService.writeData('Documents', docs, this.headers);
+        return newDocs;
     }
 
     async findAll() {
-        return await this.documentRepo.find({
-            order: { createdAt: 'DESC' },
-        });
+        const docs = this.excelService.readData<Document>('Documents', this.headers);
+        return docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     async remove(id: string) {
-        const doc = await this.documentRepo.findOne({ where: { id } });
+        const docs = this.excelService.readData<Document>('Documents', this.headers);
+        const doc = docs.find(d => d.id === id);
+
         if (!doc) throw new NotFoundException('Document not found');
 
         if (fs.existsSync(doc.filePath)) {
             fs.unlinkSync(doc.filePath);
         }
 
-        await this.documentRepo.remove(doc);
+        const filteredDocs = docs.filter(d => d.id !== id);
+        this.excelService.writeData('Documents', filteredDocs, this.headers);
+
         return { message: 'Document deleted successfully' };
     }
 }
