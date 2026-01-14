@@ -5,7 +5,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-t from-black to-gray-500 flex flex-col items-center justify-center text-center overflow-hidden px-4">
+    <div className="min-h-screen bg-gradient-to-t from-blue-50 to-red-50 flex flex-col items-center justify-center text-center overflow-hidden px-4">
 
       {/* Text Section */}
       <div>
@@ -16,7 +16,7 @@ const LandingPage = () => {
         font-semibold
         leading-tight
         tracking-tight
-        bg-gradient-to-r from-gray-900 via-gray-600 to-black
+        bg-gradient-to-r from-blue-400 via-red-400 to-gray-400
         bg-clip-text
         text-transparent
         animate-fade-up
@@ -28,7 +28,7 @@ const LandingPage = () => {
         </h1>
 
         {/* Subtext */}
-        <p className="text-gray-400 max-w-xl mt-4 text-base md:text-lg animate-fade-up delay-400">
+        <p className="text-gray-500 max-w-xl mt-4 text-base md:text-lg animate-fade-up delay-400">
           An online trading journal to get the pulse of your trade for its healthy growth.
         </p>
 
@@ -37,7 +37,7 @@ const LandingPage = () => {
           onClick={() => navigate("/dashboard")}
           className="
     mt-6
-    bg-gray-400
+    bg-gradient-to-r from-blue-200 to-gray-200
     text-gray-700
     font-medium
     px-8
@@ -49,7 +49,7 @@ const LandingPage = () => {
     duration-300
     ease-out
     hover:scale-105
-    hover:shadow-[0_8px_15px_rgba(0,0,0,0.4)]
+    hover:shadow-[0_5px_10px_rgba(0,0,0,0.1)]
     active:scale-95
     animate-fade-up
     delay-600
